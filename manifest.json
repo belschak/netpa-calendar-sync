@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Netpa Calendar Sync",
+  "version": "1.0.0",
+  "description": "Exports the Nova SBE Netpa schedule as an .ics file with stable UIDs, correct room names and the Europe/Lisbon timezone.",
+  "permissions": [],
+  "host_permissions": [
+    "https://netpa.novasbe.pt/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Netpa Calendar Sync"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://netpa.novasbe.pt/netpa/DIFTasks*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ]
+}

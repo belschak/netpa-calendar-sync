@@ -1,0 +1,141 @@
+<!doctype html>
+<html>
+  <head><meta charset="utf-8" /><title>netpa parser test</title></head>
+  <body>
+    <!--
+      Offline test: a copy of the netPA markup with placeholder course names, including the rowspan overlaps that
+      make the grid tricky. Open this file in a browser, the result shows up below.
+      It runs the real content.js, so it catches parser regressions without Netpa.
+    -->
+    <div class="formitemlist">Academic Year: 2026-27 2024-25</div>
+
+    <table id="tabhorarionew">
+      <tbody>
+        <tr class="days">
+          <th></th><th>Mon 31-8</th><th>Tue 1-9</th><th>Wed 2-9</th>
+          <th>Thu 3-9</th><th>Fri 4-9</th><th>Sat 5-9</th><th>Dom 6-9</th>
+        </tr>
+      </tbody>
+      <tbody></tbody>
+      <tbody>
+        <tr>
+          <th class="time">08h00</th>
+          <td class="cellborder" rowspan="3"><div name="descriptionDiv">Course A<br>Anfiteatro D. -1.07 - TXA</div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+        </tr>
+        <tr>
+          <th class="time">08h30</th>
+          <td class="cellborder" rowspan="2"><div name="descriptionDiv">Course B<br>Anfiteatro B.0.02 - TXD</div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+        </tr>
+        <tr>
+          <th class="time">09h00</th>
+          <td class="cellborder"><div name="descriptionDiv">Course C<br>Anfiteatro D .-1.10 - TXD</div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+        </tr>
+        <tr>
+          <th class="time">09h30</th>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder" rowspan="2"><div name="descriptionDiv">Course D <br>Anfiteatro D .-1.10 - TXC</div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+          <td class="cellborder"><div name="descriptionDiv"></div></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="semanaseguinte"><a onclick="showWeek('20260907')">&gt;</a></div>
+
+    <pre id="out">running ...</pre>
+
+    <script src="../content.js"></script>
+    <script>
+      const expected = [
+        { course: "Course A", room: "Anfiteatro D. -1.07", shift: "TXA", d: "20260831", s: "0800", e: "0930" },
+        { course: "Course B",               room: "Anfiteatro B.0.02",  shift: "TXD", d: "20260901", s: "0830", e: "0930" },
+        { course: "Course C",         room: "Anfiteatro D .-1.10", shift: "TXD", d: "20260902", s: "0900", e: "0930" },
+        { course: "Course D", room: "Anfiteatro D .-1.10", shift: "TXC", d: "20260903", s: "0930", e: "1030" },
+      ];
+
+      const year = getAcademicStartYear(document);
+      const evs = parseWeek(document, year);
+      const ics = toIcs(evs);
+
+      const fails = [];
+      if (year !== 2026) fails.push(`wrong academic year: ${year}`);
+      if (evs.length !== expected.length) fails.push(`count: ${evs.length} instead of ${expected.length}`);
+
+      evs.forEach((ev, i) => {
+        const x = expected[i];
+        if (!x) return;
+        const got = {
+          course: ev.course, room: ev.room, shift: ev.shift,
+          d: icsStamp(ev.date, ev.startMinutes).slice(0, 8),
+          s: icsStamp(ev.date, ev.startMinutes).slice(9, 13),
+          e: icsStamp(ev.date, ev.endMinutes).slice(9, 13),
+        };
+        for (const k of Object.keys(x)) {
+          if (got[k] !== x[k]) fails.push(`#${i} ${k}: "${got[k]}" instead of "${x[k]}"`);
+        }
+      });
+
+      // year rollover: January belongs to the following calendar year
+      const jan = document.createElement("th");
+      jan.textContent = "Mon 5-1";
+      document.querySelector(".days").appendChild(jan);
+      const dates = getDayDates(document, 2026);
+      const janDate = dates[dates.length - 1];
+      if (!janDate || janDate.year !== 2027) fails.push(`January year: ${JSON.stringify(janDate)}`);
+      document.querySelector(".days").removeChild(jan);
+
+      // ICS skeleton
+      if (!ics.includes("DTSTART;TZID=Europe/Lisbon:20260831T080000")) fails.push("DTSTART/TZID missing");
+      if (!ics.includes("LOCATION:Anfiteatro D. -1.07")) fails.push("wrong LOCATION");
+      if (!ics.includes("BEGIN:VTIMEZONE")) fails.push("VTIMEZONE missing");
+      if ((ics.match(/BEGIN:VEVENT/g) || []).length !== 4) fails.push("wrong VEVENT count");
+
+      // UIDs have to be stable, otherwise re-importing duplicates everything
+      const uids1 = evs.map(makeUid).join("|");
+      const uids2 = parseWeek(document, year).map(makeUid).join("|");
+      if (uids1 !== uids2) fails.push("UIDs are not stable");
+
+      // accents must survive the UID slug
+      if (makeUid({ course: "Gestão", date: { year: 2026, month: 9, day: 1 }, startMinutes: 480 })
+          !== "gestao-20260901T080000@netpa.novasbe.pt") fails.push("UID slug mangles accents");
+
+      // a room change has to keep the UID, otherwise re-importing creates a second event
+      const base = { course: "Course B", date: { year: 2026, month: 9, day: 1 }, startMinutes: 480 };
+      if (makeUid({ ...base, room: "Anfiteatro B.0.02" }) !== makeUid({ ...base, room: "Anfiteatro D. -1.07" }))
+        fails.push("UID changes when the room changes");
+
+      const nextUrl = getNextWeekUrl(document);
+      if (!nextUrl || !nextUrl.includes("dtInicial=20260907")) fails.push("nextUrl: " + nextUrl);
+
+      // week the page shows, used to put Netpa back after reading ahead
+      const start = getWeekStart(document, year);
+      if (start !== "20260831") fails.push("getWeekStart: " + start);
+
+      document.getElementById("out").textContent =
+        (fails.length ? "FAIL\n" + fails.join("\n") : "ALL CHECKS PASSED") +
+        "\n\n--- events ---\n" +
+        evs.map((e) => `${icsStamp(e.date, e.startMinutes)}-${icsStamp(e.date, e.endMinutes).slice(9,13)} | ${e.course} | ${e.room} | ${e.shift}`).join("\n") +
+        "\n\n--- example UID ---\n" + (evs[0] ? makeUid(evs[0]) : "-") +
+        "\n\n--- ICS, first event ---\n" +
+        ics.slice(ics.indexOf("BEGIN:VEVENT"), ics.indexOf("END:VEVENT") + 11);
+    </script>
+  </body>
+</html>

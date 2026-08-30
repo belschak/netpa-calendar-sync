@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        width: 280px;
+        margin: 0;
+        padding: 16px;
+        font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      h1 { margin: 0 0 4px; font-size: 14px; }
+      p.sub { margin: 0 0 14px; opacity: .65; font-size: 12px; }
+      label { display: block; margin-bottom: 6px; font-size: 12px; }
+      input {
+        width: 64px; padding: 5px 7px; font: inherit;
+        border: 1px solid rgba(128,128,128,.45); border-radius: 6px;
+        background: transparent; color: inherit;
+      }
+      button {
+        width: 100%; margin-top: 14px; padding: 9px 12px;
+        font: inherit; font-weight: 600; color: #fff;
+        background: #1a56db; border: 0; border-radius: 6px; cursor: pointer;
+      }
+      button:hover:not(:disabled) { background: #1e40af; }
+      button:disabled { opacity: .55; cursor: default; }
+      #status { margin: 12px 0 0; font-size: 12px; min-height: 1.4em; }
+      #status.err { color: #b91c1c; }
+      #status.ok { color: #15803d; }
+      .hint {
+        margin: 12px 0 0; padding-top: 10px; font-size: 11px; opacity: .6;
+        border-top: 1px solid rgba(128,128,128,.25);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Netpa Calendar Sync</h1>
+    <p class="sub">Exports your schedule starting from the week Netpa currently shows.</p>
+
+    <label for="weeks">Weeks to read</label>
+    <input id="weeks" type="number" min="1" max="52" value="20" />
+
+    <button id="run">Export calendar</button>
+    <p id="status"></p>
+
+    <p class="hint">
+      Google Calendar: Settings &rarr; Import &amp; export. Importing a newer export
+      updates the events you already have instead of duplicating them.
+    </p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
